@@ -113,7 +113,14 @@ class FilesController {
     if (!files) {
       return res.status(404).json({ error: 'Not found' });
     }
-    return res.status(200).json(files);
+    return res.status(200).json({
+      id: files._id,
+      userId: files.userId,
+      name: files.name,
+      type: files.type,
+      isPublic: files.isPublic,
+      parentId: files.parentId,
+    });
   }
 
   static async getIndex(req, res) {
@@ -143,7 +150,16 @@ class FilesController {
       .limit(pageSize)
       .toArray();
 
-    return res.status(200).json(files);
+    const data = files.map((data) => ({
+      id: data._id,
+      userId: data.userId,
+      name: data.name,
+      type: data.type,
+      isPublic: data.isPublic,
+      parentId: data.parentId,
+    }));
+
+    return res.status(200).json(data);
   }
 }
 
