@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { ObjectId } = require('mongodb');
 const database = require('../utils/db');
 const redis = require('../utils/redis');
 
@@ -26,7 +27,8 @@ class UsersController {
   }
 
   static async getMe(req, res) {
-    const token = req.header['x-token'];
+    const token = req.headers['x-token'];
+
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -39,7 +41,7 @@ class UsersController {
     }
     try {
       const usersCollection = database.db.collection('users');
-      const user = await usersCollection.findOne({ _id: userId });
+      const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
 
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
