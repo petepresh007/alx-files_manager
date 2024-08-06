@@ -10,29 +10,29 @@ class FilesController {
     const token = req.headers['x-token'];
 
     if (!token) {
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const userId = await redis.get(`auth_${token}`);
 
     if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     const {
       name, type, parentId, isPublic, data,
     } = req.body;
     if (!name) {
-      res.status(400).json({ error: 'Missing name' });
+      return res.status(400).json({ error: 'Missing name' });
     }
 
     const allowedTypes = ['folder', 'file', 'image'];
 
     if (!type || !allowedTypes.includes(type)) {
-      res.status(400).json({ error: 'Missing type' });
+      return res.status(400).json({ error: 'Missing type' });
     }
 
     if (!data && type !== 'folder') {
-      res.status(400).json({ error: 'Missing data' });
+      return res.status(400).json({ error: 'Missing data' });
     }
 
     let parent = null;
@@ -85,6 +85,65 @@ class FilesController {
       isPublic: result.ops[0].isPublic,
       parentId: result.ops[0].parentId,
     });
+  }
+
+  static async getShow(req, res) {
+    const { id } = req.params;
+    const token = req.headers['x-token'];
+
+    if (!token) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userId = await redis.get(`auth_${token}`);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    const files = await database.db.collection('files').findOne({
+      userId: new ObjectId(userId),
+      _id: new ObjectId(id),
+    });
+
+    if (!files) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    return res.status(200).json(files);
+  }
+
+  static async getIndex(req, res) {
+    const token = req.headers['x-token'];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userId = await redis.get(`auth_${token}`);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { parentId = 0 } = req.query;
+    const page = 0;
+    const pageSize = 20;
+    const skip = page * pageSize;
+
+    const query = {
+      userId: new ObjectId(userId),
+      parentId: parentId === 0 ? 0 : new ObjectId(parentId),
+    };
+    const files = await database.db.collection('files')
+      .find(query)
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+
+    return res.status(200).json(files);
   }
 }
 
