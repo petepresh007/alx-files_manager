@@ -54,7 +54,15 @@ class FilesController {
     };
     if (type === 'folder') {
       const result = await database.db.collection('files').insertOne(file);
-      return res.status(201).json(result.ops[0]);
+
+      return res.status(201).json({
+        id: result.ops[0]._id,
+        userId: result.ops[0].userId,
+        name: result.ops[0].name,
+        type: result.ops[0].type,
+        isPublic: result.ops[0].isPublic,
+        parentId: result.ops[0].parentId,
+      });
     }
 
     const path = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -68,7 +76,15 @@ class FilesController {
 
     file.localPath = localPath;
     const result = await database.db.collection('files').insertOne(file);
-    return res.status(201).json(result.ops[0]);
+
+    return res.status(201).json({
+      id: result.ops[0]._id,
+      userId: result.ops[0].userId,
+      name: result.ops[0].name,
+      type: result.ops[0].type,
+      isPublic: result.ops[0].isPublic,
+      parentId: result.ops[0].parentId,
+    });
   }
 }
 
