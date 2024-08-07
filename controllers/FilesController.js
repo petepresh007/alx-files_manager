@@ -2,6 +2,7 @@ const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const { join } = require('path');
 const fs = require('fs');
+const mime = require('mime-types');
 const redis = require('../utils/redis');
 const database = require('../utils/db');
 
@@ -167,11 +168,11 @@ class FilesController {
     const { id } = req.params;
 
     if (!token) {
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     const userId = await redis.get(`auth_${token}`);
     if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     try {
       const files = await database.db.collection('files').updateOne({
@@ -181,7 +182,7 @@ class FilesController {
       { $set: { isPublic: true } });
 
       if (!files) {
-        res.status(404).json({ error: 'Not found' });
+        return res.status(404).json({ error: 'Not found' });
       }
 
       const data = await database.db.collection('files').findOne({
@@ -189,7 +190,7 @@ class FilesController {
         userId: new ObjectId(userId),
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         id: data._id,
         userId: data.userId,
         name: data.name,
@@ -198,7 +199,7 @@ class FilesController {
         parentId: data.parentId,
       });
     } catch (error) {
-      res.status(500).json(error, 'internal server error');
+      return res.status(500).json(error, 'internal server error');
     }
   }
 
@@ -207,11 +208,11 @@ class FilesController {
     const { id } = req.params;
 
     if (!token) {
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     const userId = await redis.get(`auth_${token}`);
     if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     try {
       const files = await database.db.collection('files').updateOne({
@@ -221,7 +222,7 @@ class FilesController {
       { $set: { isPublic: false } });
 
       if (!files) {
-        res.status(404).json({ error: 'Not found' });
+        return res.status(404).json({ error: 'Not found' });
       }
 
       const data = await database.db.collection('files').findOne({
@@ -229,7 +230,7 @@ class FilesController {
         userId: new ObjectId(userId),
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         id: data._id,
         userId: data.userId,
         name: data.name,
@@ -238,8 +239,43 @@ class FilesController {
         parentId: data.parentId,
       });
     } catch (error) {
-      res.status(500).json(error, 'internal server error');
+      return res.status(500).json(error, 'internal server error');
     }
+  }
+
+  static async getFile(req, res) {
+    const token = req.headers['x-token'];
+    const { id } = req.params;
+
+    const userId = await redis.get(`auth_${token}`);
+
+    const file = await database.db.collection('files').findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    if (file.type !== 'folder') {
+      return res.status(400).json({ error: 'A folder doesn\'t have content' });
+    }
+
+    const { isPublic } = file;
+
+    if (!isPublic && (!token || !userId || userId !== file.userId.toString())) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    if (!fs.existsSync(file.localPath)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    const mimeType = mime.lookup(file.name);
+    const fileContent = fs.readFileSync(file.localPath);
+
+    res.setHeader('Content-Type', mimeType);
+    return res.status(200).send(fileContent);
   }
 }
 
