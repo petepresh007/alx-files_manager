@@ -161,6 +161,86 @@ class FilesController {
 
     return res.status(200).json(data);
   }
+
+  static async putPublish(req, res) {
+    const token = req.headers['x-token'];
+    const { id } = req.params;
+
+    if (!token) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userId = await redis.get(`auth_${token}`);
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const files = await database.db.collection('files').updateOne({
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+      },
+      { $set: { isPublic: true } });
+
+      if (!files) {
+        res.status(404).json({ error: 'Not found' });
+      }
+
+      const data = await database.db.collection('files').findOne({
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+      });
+
+      res.status(200).json({
+        id: data._id,
+        userId: data.userId,
+        name: data.name,
+        type: data.type,
+        isPublic: data.isPublic,
+        parentId: data.parentId,
+      });
+    } catch (error) {
+      res.status(500).json(error, 'internal server error');
+    }
+  }
+
+  static async putUnpublish(req, res) {
+    const token = req.headers['x-token'];
+    const { id } = req.params;
+
+    if (!token) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userId = await redis.get(`auth_${token}`);
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const files = await database.db.collection('files').updateOne({
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+      },
+      { $set: { isPublic: false } });
+
+      if (!files) {
+        res.status(404).json({ error: 'Not found' });
+      }
+
+      const data = await database.db.collection('files').findOne({
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+      });
+
+      res.status(200).json({
+        id: data._id,
+        userId: data.userId,
+        name: data.name,
+        type: data.type,
+        isPublic: data.isPublic,
+        parentId: data.parentId,
+      });
+    } catch (error) {
+      res.status(500).json(error, 'internal server error');
+    }
+  }
 }
 
 module.exports = FilesController;
