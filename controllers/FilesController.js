@@ -101,7 +101,12 @@ class FilesController {
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
+    const user = await database.db.collection('users').findOne({
+      _id: new ObjectId(userId),
+    });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     if (!ObjectId.isValid(id)) {
       return res.status(404).json({ error: 'Not found' });
     }
@@ -133,6 +138,13 @@ class FilesController {
 
     const userId = await redis.get(`auth_${token}`);
     if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const user = await database.db.collection('users').findOne({
+      _id: new ObjectId(userId),
+    });
+    if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
